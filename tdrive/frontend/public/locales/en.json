@@ -166,6 +166,7 @@
     "components.newversion.new_version_component.link": "Click here to reload",
     "components.newversion.new_version_modal.title": "New update available !",
     "components.add_mails_workspace.text_area_placeholder": "Enter emails of your users*",
+    "services.file_upload_service.toaster.upload_file_error": "Error uploading file: {{$1}}",
     "services.console_services.toaster.add_emails_error": "Error while adding email(s)",
     "services.console_services.toaster.add_email_error_message": "Error while adding {{$1}}",
     "services.console_services.toaster.success_verify_email": "A verification link has been sent to your email account",
@@ -234,6 +235,9 @@
     "compenents.VersionModalContent_donwload":"Download",
     "hooks.use-drive-actions.unable_load_file":"Unable to load your files.",
     "hooks.use-drive-actions.unable_create_file":"Unable to create a new file.",
+    "hooks.use-drive-actions.quota_limit_exceeded_title":"You're out of storage",
+    "hooks.use-drive-actions.quota_limit_exceeded_message":"You have reached the limit of your storage. Please, delete some files to vacate more space and have access to all features of Twake Drive.",
+    "hooks.use-drive-actions.quota_limit_exceeded_plans": "Our solution is now free for all users, but additional plans are coming soon.",
     "hooks.use-drive-actions.unable_download_file":"Unable to download this files.",
     "hooks.use-drive-actions.unable_remove_file":"Unable to remove this file.",
     "hooks.use-drive-actions.unable_restore_file":"Unable to restore this item.",
@@ -328,5 +332,8 @@
     "scenes.app.shared_with_me.name": "Name",
     "scenes.app.shared_with_me.shared_by": "Shared by",
     "scenes.app.shared_with_me.shared_date": "Shared date",
-    "scenes.app.shared_with_me.edit": "Edit"
+    "scenes.app.shared_with_me.edit": "Edit",
+    "ONLYOFFICE Word Document": "Create a Document",
+    "ONLYOFFICE Excel Document": "Create a Spreadsheet",
+    "ONLYOFFICE PowerPoint Document": "Create a Presentation" 
 }

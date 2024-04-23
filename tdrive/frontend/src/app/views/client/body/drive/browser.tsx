@@ -26,6 +26,7 @@ import HeaderPath from './header-path';
 import { ConfirmDeleteModal } from './modals/confirm-delete';
 import { ConfirmTrashModal } from './modals/confirm-trash';
 import { CreateModalAtom } from './modals/create';
+import { UploadModelAtom } from './modals/upload'
 import { PropertiesModal } from './modals/properties';
 import { AccessModal } from './modals/update-access';
 import { VersionsModal } from './modals/versions';
@@ -76,6 +77,11 @@ export default memo(
       DriveCurrentFolderAtom({ context: context, initialFolderId: dirId || viewId || initialParentId || 'user_'+user?.id }),
     );
 
+    // set the initial view to the user's home directory
+    useEffect(() => {
+      !dirId && !viewId && history.push(RouterServices.generateRouteFromState({viewId: parentId}));
+    }, [viewId, dirId]);
+
     const [loadingParentChange, setLoadingParentChange] = useState(false);
     const {
       sharedWithMe,
@@ -96,6 +102,7 @@ export default memo(
     const uploadZoneRef = useRef<UploadZone | null>(null);
 
     const setCreationModalState = useSetRecoilState(CreateModalAtom);
+    const setUploadModalState = useSetRecoilState(UploadModelAtom);
 
     const [checked, setChecked] = useRecoilState(DriveItemSelectedList);
 
@@ -119,9 +126,9 @@ export default memo(
       if (!inPublicSharing) refresh('trash');
     }, [parentId, refresh, filter]);
 
-    const openItemModal = useCallback(() => {
-      if (item?.id) setCreationModalState({ open: true, parent_id: item.id });
-    }, [item?.id, setCreationModalState]);
+    const uploadItemModal = useCallback(() => {
+      if (item?.id) setUploadModalState({ open: true, parent_id: item.id });
+    }, [item?.id, setUploadModalState]);
 
     const selectedCount = Object.values(checked).filter(v => v).length;
     const folders = children
@@ -212,6 +219,7 @@ export default memo(
         onCheck: (v: boolean) =>
             setChecked(_.pickBy({ ...checked, [child.id]: v }, _.identity)),
         onBuildContextMenu: () => onBuildContextMenu(details, child),
+        inPublicSharing,
       };
       return (
           isMobile ? (
@@ -340,7 +348,7 @@ export default memo(
                     </div>
                   </div>
                 ) : (
-                  <HeaderPath path={path || []} inTrash={inTrash} setParentId={setParentId} />
+                  <HeaderPath path={path || []} inTrash={inTrash} setParentId={setParentId} inPublicSharing={inPublicSharing} />
                 )}
                 <div className="grow" />
 
@@ -385,7 +393,7 @@ export default memo(
                             onClick={() => {
                               const route = RouterServices.generateRouteFromState({dirId: child.id});
                               history.push(route);
-                              return setParentId(child.id);
+                              if (inPublicSharing) return setParentId(child.id);
                             }}
                             checked={checked[child.id] || false}
                             onCheck={v =>
@@ -410,7 +418,7 @@ export default memo(
                         <>
                           <Base>{Languages.t('scenes.app.drive.drag_and_drop')}</Base>
                           <br />
-                          <Button onClick={() => openItemModal()} theme="primary" className="mt-4">
+                          <Button onClick={() => uploadItemModal()} theme="primary" className="mt-4">
                             {Languages.t('scenes.app.drive.add_doc')}
                           </Button>
                         </>

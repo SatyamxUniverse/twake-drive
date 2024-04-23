@@ -58,8 +58,8 @@ export default class StorageService extends TdriveService<StorageAPI> implements
       });
     } else {
       logger.info("Using 'local' connector for storage.");
-      const defaultHomeDir = this.configuration.get<string>("local.path");
-      if (defaultHomeDir) this.homeDir = `${defaultHomeDir}`;
+      // const defaultHomeDir = this.configuration.get<string>("local.path");
+      // if (defaultHomeDir) this.homeDir = `${defaultHomeDir}`;
       logger.trace(`Home directory for the storage: ${this.homeDir}`);
     }
     logger.info(
@@ -73,6 +73,10 @@ export default class StorageService extends TdriveService<StorageAPI> implements
 
   getHomeDir(): string {
     return this.homeDir;
+  }
+
+  exists(path: string, options?: ReadOptions): Promise<boolean> {
+    return this.getConnector().exists(path, options);
   }
 
   async write(path: string, stream: Stream, options?: WriteOptions): Promise<WriteMetadata> {

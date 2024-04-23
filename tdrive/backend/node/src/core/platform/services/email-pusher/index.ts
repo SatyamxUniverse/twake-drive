@@ -43,11 +43,15 @@ export default class EmailPusherClass
     this.interface = this.configuration.get<string>("email_interface", "");
     this.platformUrl = this.configuration.get<string>("platform_url", "");
     if (this.interface === "smtp") {
+      const useTLS = this.configuration.get<string>("smtp_tls", "false") == "true";
       const smtpConfig: SMTPClientConfigType = {
         host: this.configuration.get<string>("smtp_host", ""),
         port: this.configuration.get<number>("smtp_port", 25),
         secure: false,
+        ignoreTLS: !useTLS,
+        requireTLS: useTLS,
       };
+      this.logger.info(`Start SMTP client with configuration: ${JSON.stringify(smtpConfig)}`);
       this.transporter = nodemailer.createTransport(smtpConfig);
       this.sender = this.configuration.get<string>("sender", "");
     } else {
@@ -80,8 +84,9 @@ export default class EmailPusherClass
       const templatePath = path.join(__dirname, "templates", language, `${template}.eta`);
       const subjectPath = path.join(__dirname, "templates", language, `${template}.subject.eta`);
       const encodedCompanyId = translator.fromUUID(data.notifications[0].item.company_id);
-      const encodedFileId = translator.fromUUID(data.notifications[0].item.id);
-      const encodedUrl = `${this.platformUrl}/client/${encodedCompanyId}/v/shared_with_me/preview/${encodedFileId}`;
+      const encodedItemId = translator.fromUUID(data.notifications[0].item.id);
+      const previewType = data.notifications[0].item.is_directory ? "d" : "preview";
+      const encodedUrl = `${this.platformUrl}/client/${encodedCompanyId}/v/shared_with_me/${previewType}/${encodedItemId}`;
 
       if (!existsSync(templatePath)) {
         throw Error(`template not found: ${templatePath}`);

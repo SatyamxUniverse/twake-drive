@@ -24,19 +24,32 @@ export default class S3ConnectorService implements StorageConnectorAPI {
   }
 
   write(path: string, stream: Readable): Promise<WriteMetadata> {
-    let totalSize = 0;
     return new Promise((resolve, reject) => {
+      let totalSize = 0;
+      let didCompletePutObject = false;
+      let didCompleteCalculateSize = false;
+      const doResolve = () =>
+        didCompletePutObject &&
+        didCompleteCalculateSize &&
+        resolve({
+          size: totalSize,
+        });
       stream
         .on("data", function (chunk) {
           totalSize += chunk.length;
         })
         .on("end", () => {
-          resolve({
-            size: totalSize,
-          });
+          // TODO: this could be bad practice as it puts the stream in flow mode before putObject gets to it
+          didCompleteCalculateSize = true;
+          doResolve();
         });
-
-      this.client.putObject(this.minioConfiguration.bucket, path, stream).catch(e => reject(e));
+      this.client
+        .putObject(this.minioConfiguration.bucket, path, stream)
+        .then(_x => {
+          didCompletePutObject = true;
+          doResolve();
+        })
+        .catch(reject);
     });
   }
 
@@ -76,5 +89,28 @@ export default class S3ConnectorService implements StorageConnectorAPI {
       }
     } catch (err) {}
     return false;
+  }
+
+  async exists(path: string): Promise<boolean> {
+    logger.trace(`Reading file ... ${path}`);
+    const tries = 2;
+    for (let i = 0; i <= tries; i++) {
+      try {
+        const stat = await this.client.statObject(this.minioConfiguration.bucket, path);
+        if (stat?.size > 0) {
+          break;
+        }
+      } catch (e) {
+        logger.error("Error getting information from S3", e);
+      }
+
+      if (i === tries) {
+        logger.info(`Unable to get file after ${tries} tries:`);
+        return false;
+      }
+      await new Promise(r => setTimeout(r, 500));
+      logger.info(`File ${path} not found in S3 bucket, retrying...`);
+    }
+    return true;
   }
 }

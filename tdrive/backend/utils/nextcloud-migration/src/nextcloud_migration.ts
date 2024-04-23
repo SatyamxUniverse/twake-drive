@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { spawnSync } from 'child_process';
 // @ts-ignore
 import fs from 'fs';
 import { ShellLdapUserProvider } from './shell_ldap_user';
@@ -42,44 +42,45 @@ export class NextcloudMigration {
     this.driveClient = new TwakeDriveClient(this.config.drive);
   }
 
-  async migrate(username: string, password: string) {
-    const dir = this.createTmpDir(username);
+  async migrate(username: string, password: string, dir?: string) {
+    const dirTmp = dir ? dir : this.createTmpDir(username);
+    if (dir) console.log(`Using dir: ${dir}`);
+    // const dir = "/tmp/to_upload"
     try {
       const user = await this.getLDAPUser(username);
       //create user if needed Twake Drive
       const driveUser = await this.driveClient.createUser(user);
       console.log(`Drive user ${driveUser.id} created`);
       //download all files from nextcloud to tmp dir
-      await this.download(username, password, dir);
+      if(!dir) await this.download(username, password, dirTmp);
       //upload files to the Twake Drive
-      await this.upload(driveUser, dir);
+      await this.upload(driveUser, dirTmp);
     } catch (e) {
       console.error('Error downloading files from next cloud', e);
       throw e;
     } finally {
-      this.deleteDir(dir);
+      if(!dir) this.deleteDir(dirTmp);
     }
   }
 
   async download(username: string, password: string, dir: string) {
     return new Promise((resolve, reject) => {
-      let cmd = `nextcloudcmd -s --non-interactive -u '${username}' -p '${password}' ${dir} ${this.config.nextcloudUrl}`;
+      let args = [ '-s', '--non-interactive', '-u', username, '-p', password, dir, this.config.nextcloudUrl];
       console.log('Start downloading data from Nextcloud');
-      exec(cmd, (error, stdout, stderr) => {
-        if (stderr) {
-          console.log('ERROR: ' + stderr);
-        }
-        if (stdout) {
-          console.log('OUT: ' + stdout);
-        }
-        if (error) {
-          console.log(`ERROR running sync for the user: ${error.message}`);
-          reject(error.message);
-        } else {
-          console.log('Download finished');
-          resolve('');
-        }
-      });
+      const ret = spawnSync('nextcloudcmd', args);
+      if (ret.stderr) {
+        console.log('ERROR:', ret.stderr.toString());
+      }
+      if (ret.stdout) {
+        console.log('OUT: ', ret.stdout.toString());
+      }
+      if (ret.error) {
+        console.log(`ERROR running sync for the user: ${ret.error.message}`);
+        reject(ret.error.message);
+      } else {
+        console.log('Download finished');
+        resolve('');
+      }
     });
   }
 
@@ -113,6 +114,7 @@ export class NextcloudMigration {
   async upload(user: TwakeDriveUser, sourceDirPath: string, parentDirId = "user_" + user.id) {
     const dirsToUpload: Map<string, string> = new Map<string, string>();
     const filesToUpload: string[] = [];
+    const existingFiles: string[] = [];
 
     const parent = await this.driveClient.getDocument(parentDirId);
 
@@ -126,6 +128,9 @@ export class NextcloudMigration {
       const stat = fs.statSync(filePath);
       if (exists(name)) {
         logger.info(`File ${name} already exists`);
+        //find document that we need to replace
+        existingFiles.push(filePath);
+        //skip
       } else {
         if (stat.isFile()) {
           logger.info(`Add file for future upload ${filePath}`);
@@ -136,6 +141,34 @@ export class NextcloudMigration {
         }
       }
     });
+    //check existing files
+    for (const fPath of existingFiles) {
+      logger.debug(`Check existing file ${fPath}`)
+      let name = path.parse(fPath).name;
+      let candidatesWithTheSameName = parent.children.filter(i => i.name.startsWith(name));
+      if (candidatesWithTheSameName.length > 1) {
+        logger.warn("WE HAVE MORE MORE THAN ONE FILE WITH NAME: " + name);
+      } else {
+        const doc = candidatesWithTheSameName[0];
+        if (doc.is_directory) {
+          logger.info(`Directory ${name} exists, try to upload inside`);
+          await this.upload(user, fPath, doc.id);
+        } else {
+          //check that it exists in S3
+          if (await this.driveClient.existsInS3(doc.id)) {
+            logger.info(`File ${name}, docId = ${doc.id} exists in S3`);
+          } else {
+            //if it doesn't exists upload just one file
+            logger.info(`File ${name}, is missing, uploading files`);
+            const response = await this.driveClient.uploadToS3(fPath, doc.id);
+            if (!response && !response.success) {
+              console.log(`Error creating file '${name}' in S3`)
+            }
+          }
+        }
+      }
+    }
+
 
     //upload all files
     logger.debug(`UPLOAD FILES FOR  ${sourceDirPath}`)

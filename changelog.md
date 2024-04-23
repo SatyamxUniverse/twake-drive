@@ -1,3 +1,36 @@
+# Twake Drive v1.0.2
+
+## Features
+
+- New “Create” context menu new icons
+- CLI tool to reindex search database
+- Handling quota limit error
+- 
+## BugFixes and improvements
+- Handling quota limit error
+- Refactored starting docker-compose file
+- Fix navigation for shared link view
+
+# Twake Drive v1.0.1
+
+## Features
+
+- New Version Semantics
+- Usage quota settings 
+- PostgreSQL support as a metadata database 
+- OpenSearch support as a search database
+- New API to check file storage consistency
+- UX improvements
+  - Remove the switcher from breadcrumbs
+  - Improved translations
+- Be able to use SMTP transport without TLS
+- Do not display deleted items in the shared with me section
+
+## BugFixes
+- Fix preview of the files on mobile and web
+- Malformed URL when you share a file
+- ...
+
 # Twake Drive v2023.Q3.012
 
 ## Features

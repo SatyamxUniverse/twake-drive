@@ -45,6 +45,14 @@ export default class MongoSearch extends SearchAdapter implements SearchAdapterI
     this.mongodb = await service.getDatabase();
   }
 
+  public async disconnect() {
+    if (this.mongodb) {
+      const service = this.database.getConnector() as MongoConnector;
+      await service.disconnect();
+      this.mongodb = null;
+    }
+  }
+
   private async createIndex(
     entityDefinition: EntityDefinition,
     columns: { [name: string]: ColumnDefinition },
@@ -200,9 +208,10 @@ export default class MongoSearch extends SearchAdapter implements SearchAdapterI
 
     const { query, sort, project } = buildSearchQuery<EntityType>(entityType, filters, options);
 
+    logger.info(`Search query: ${JSON.stringify(query)}`);
     console.log(query);
 
-    let cursor = collection.find({ ...query }).sort(sort);
+    let cursor = collection.find(query).sort(sort);
     if (project) {
       cursor = cursor.project(project);
     }
@@ -228,9 +237,10 @@ export default class MongoSearch extends SearchAdapter implements SearchAdapterI
       }
     }
 
+    const limit = parseInt(options.pagination.limitStr);
     const nextToken =
-      entities.length === parseInt(options.pagination.limitStr) &&
-      (parseInt(options.pagination.page_token) + 1).toString(10);
+      entities.length === limit &&
+      (parseInt(options.pagination.page_token || "0") + limit).toString(10);
     const nextPage: Paginable = new Pagination(nextToken, options.pagination.limitStr || "100");
 
     logger.info(`Found ${entities.length} results on entity ${searchPrefix}${index}`);
